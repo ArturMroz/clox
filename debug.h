@@ -3,9 +3,9 @@
 
 #include "chunk.h"
 
-void disassembleChunk(Chunk *chunk, const char *name);
-int disassembleInstruction(Chunk *chunk, int offset);
-static int simpleInstruction(const char *name, int offset);
-static int constantInstruction(const char *name, Chunk *chunk, int offset);
+void disassemble_chunk(Chunk *chunk, const char *name);
+int disassemble_instruction(Chunk *chunk, int offset);
+static int simple_instruction(const char *name, int offset);
+static int constant_instruction(const char *name, Chunk *chunk, int offset);
 
 #endif

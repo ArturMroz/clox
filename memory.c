@@ -2,15 +2,15 @@
 
 #include "memory.h"
 
-void *reallocate(void *pointer, size_t oldSize, size_t newSize)
+void *reallocate(void *pointer, size_t old_size, size_t new_size)
 {
-    if (newSize == 0)
+    if (new_size == 0)
     {
         free(pointer);
         return NULL;
     }
 
-    void *result = realloc(pointer, newSize);
+    void *result = realloc(pointer, new_size);
     if (result == NULL)
         exit(1);
 

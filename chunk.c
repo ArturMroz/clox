@@ -3,36 +3,36 @@
 #include "chunk.h"
 #include "memory.h"
 
-void initChunk(Chunk *chunk)
+void init_chunk(Chunk *chunk)
 {
     chunk->code = NULL;
     chunk->len = 0;
     chunk->cap = 0;
-    initValueArray(&chunk->constants);
+    init_value_array(&chunk->constants);
 }
 
-void writeChunk(Chunk *chunk, uint8_t byte)
+void write_chunk(Chunk *chunk, uint8_t byte)
 {
     if (chunk->cap < chunk->len + 1)
     {
-        int oldCap = chunk->cap;
-        chunk->cap = GROW_CAPACITY(oldCap);
-        chunk->code = GROW_ARRAY(uint8_t, chunk->code, oldCap, chunk->cap);
+        int old_cap = chunk->cap;
+        chunk->cap = GROW_CAPACITY(old_cap);
+        chunk->code = GROW_ARRAY(uint8_t, chunk->code, old_cap, chunk->cap);
     }
 
     chunk->code[chunk->len] = byte;
     chunk->len++;
 }
 
-void freeChunk(Chunk *chunk)
+void free_chunk(Chunk *chunk)
 {
     FREE_ARRAY(uint8_t, chunk->code, chunk->cap);
-    freeValueArray(&chunk->constants);
-    initChunk(chunk);
+    free_value_array(&chunk->constants);
+    init_chunk(chunk);
 }
 
-int addConstant(Chunk *chunk, Value value)
+int add_constant(Chunk *chunk, Value value)
 {
-    writeValueArray(&chunk->constants, value);
+    write_value_array(&chunk->constants, value);
     return chunk->constants.len - 1;
 }
