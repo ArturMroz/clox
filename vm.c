@@ -36,6 +36,12 @@ InterpretResult interpret(Chunk *chunk) {
 static InterpretResult run() {
 #define READ_BYTE() (*vm.ip++)
 #define READ_CONSTANT() (vm.chunk->constants.values[READ_BYTE()])
+#define BINARY_OP(op)     \
+    do {                  \
+        double b = pop(); \
+        double a = pop(); \
+        push(a op b);     \
+    } while (false)
 
     for (;;) {
 #ifdef DEBUG_TRACE_EXECUTION
@@ -51,11 +57,6 @@ static InterpretResult run() {
 
         uint8_t instruction;
         switch (instruction = *vm.ip++) {
-        case OP_RETURN: {
-            print_value(pop());
-            printf("\n");
-            return INTERPRET_OK;
-        }
         case OP_CONSTANT: {
             Value constant = vm.chunk->constants.values[*vm.ip++];
             push(constant);
@@ -63,9 +64,32 @@ static InterpretResult run() {
             printf("\n");
             break;
         }
+        case OP_ADD:
+            BINARY_OP(+);
+            break;
+        case OP_SUBTRACT:
+            BINARY_OP(-);
+            break;
+        case OP_MULTIPLY:
+            BINARY_OP(*);
+            break;
+        case OP_DIVIDE:
+            BINARY_OP(/);
+            break;
+        case OP_NEGATE:
+            push(-pop());
+            // negating variable without push & pop (probably faster, haven't measured):
+            // *(vm.stack_top - 1) = -(*(vm.stack_top - 1));
+            break;
+        case OP_RETURN: {
+            print_value(pop());
+            printf("\n");
+            return INTERPRET_OK;
+        }
         }
     }
 
 #undef READ_BYTE
 #undef READ_CONSTANT
+#undef BINARY_OP
 }
