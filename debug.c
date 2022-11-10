@@ -11,6 +11,19 @@ void disassemble_chunk(Chunk *chunk, const char *name) {
     }
 }
 
+static int simple_instruction(const char *name, int offset) {
+    printf("%s\n", name);
+    return offset + 1;
+}
+
+static int constant_instruction(const char *name, Chunk *chunk, int offset) {
+    uint8_t constantAddr = chunk->code[offset + 1];
+    printf("%-16s %4d '", name, constantAddr);
+    print_value(chunk->constants.values[constantAddr]);
+    printf("'\n");
+    return offset + 2;
+}
+
 int disassemble_instruction(Chunk *chunk, int offset) {
     printf("%04d ", offset);
 
@@ -48,17 +61,4 @@ int disassemble_instruction(Chunk *chunk, int offset) {
         printf("Unknown opcode %d\n", instruction);
         return offset + 1;
     }
-}
-
-static int simple_instruction(const char *name, int offset) {
-    printf("%s\n", name);
-    return offset + 1;
-}
-
-static int constant_instruction(const char *name, Chunk *chunk, int offset) {
-    uint8_t constantAddr = chunk->code[offset + 1];
-    printf("%-16s %4d '", name, constantAddr);
-    print_value(chunk->constants.values[constantAddr]);
-    printf("'\n");
-    return offset + 2;
 }

@@ -4,4 +4,3 @@ all:
 
 ped: 
 	gcc *.c -o main -Wall -Wextra -pedantic
-	./main

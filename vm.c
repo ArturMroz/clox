@@ -1,6 +1,7 @@
 #include <stdio.h>
 
 #include "common.h"
+#include "compiler.h"
 #include "debug.h"
 #include "vm.h"
 
@@ -25,12 +26,6 @@ void push(Value value) {
 Value pop() {
     vm.stack_top--;
     return *vm.stack_top;
-}
-
-InterpretResult interpret(Chunk *chunk) {
-    vm.chunk = chunk;
-    vm.ip = vm.chunk->code;
-    return run();
 }
 
 static InterpretResult run() {
@@ -92,4 +87,9 @@ static InterpretResult run() {
 #undef READ_BYTE
 #undef READ_CONSTANT
 #undef BINARY_OP
+}
+
+InterpretResult interpret(const char *source) {
+    compile(source);
+    return INTERPRET_OK;
 }
