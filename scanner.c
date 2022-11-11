@@ -47,6 +47,81 @@ static char advance() {
     return scanner.cur[-1];
 }
 
+static char peek() {
+    return *scanner.cur;
+}
+
+static char peek_next() {
+    if (is_at_end()) return '\0';
+    return scanner.cur[1];
+}
+
+static void skip_whitespace() {
+    for (;;) {
+        char c = peek();
+        switch (c) {
+        case ' ':
+        case '\r':
+        case '\t':
+            advance();
+            break;
+
+        case '\n':
+            scanner.line++;
+            advance();
+            break;
+
+        // treating comments as whitespace, sue me
+        case '/':
+            if (peek_next() == '/') {
+                // comment goes until the end of line
+                while (peek() != '\n' && !is_at_end())
+                    advance();
+            } else {
+                return;
+            }
+
+        default:
+            return;
+        }
+    }
+}
+
+static bool is_digit(char c) {
+    return '0' <= c && c <= '9';
+}
+
+static Token number() {
+    while (is_digit(peek())) {
+        advance();
+    }
+
+    // look for a fractional part
+    if (peek() == '.' && is_digit(peek_next())) {
+        // consume the dot
+        advance();
+
+        while (is_digit(peek())) {
+            advance();
+        }
+    }
+
+    return make_token(TOKEN_NUMBER);
+}
+
+static Token string() {
+    while (peek() != '"' && !is_at_end()) {
+        if (peek() == '\n') scanner.line++;
+        advance();
+    }
+
+    if (is_at_end()) return error_token("Unterminated string.");
+
+    // closing quote
+    advance();
+    return make_token(TOKEN_STRING);
+}
+
 static bool match(char expected) {
     if (is_at_end()) return false;
     if (*scanner.cur != expected) return false;
@@ -56,6 +131,8 @@ static bool match(char expected) {
 }
 
 Token scan_token() {
+    skip_whitespace();
+
     // since scan_token scans a complete token, we know we are at the beggining
     // of a new token when we enter the function
     scanner.start = scanner.cur;
@@ -63,6 +140,8 @@ Token scan_token() {
     if (is_at_end()) return make_token(TOKEN_EOF);
 
     char c = advance();
+
+    if (is_digit(c)) return number();
 
     switch (c) {
     case '(':
@@ -96,6 +175,9 @@ Token scan_token() {
         return make_token(match('=') ? TOKEN_LESS_EQUAL : TOKEN_LESS);
     case '>':
         return make_token(match('=') ? TOKEN_GREATER_EQUAL : TOKEN_GREATER);
+
+    case '"':
+        return string();
     }
 
     return error_token("Unexpected character.");
