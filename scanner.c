@@ -104,16 +104,6 @@ static void skip_whitespace() {
     }
 }
 
-static TokenType check_keyword(int start, int len, const char *rest, TokenType type) {
-    // 1. lexeme needs to be exactly as long as keyword
-    // 2. remaining characters must match exactly
-    if ((scanner.cur - scanner.start == start + len) && memcmp(scanner.start + start, rest, len) == 0) {
-        return type;
-    }
-
-    return TOKEN_IDENTIFIER;
-}
-
 static Token number() {
     while (is_digit(peek())) {
         advance();
@@ -143,6 +133,16 @@ static Token string() {
     // closing quote
     advance();
     return make_token(TOKEN_STRING);
+}
+
+static TokenType check_keyword(int start, int len, const char *rest, TokenType type) {
+    // 1. lexeme needs to be exactly as long as keyword
+    // 2. remaining characters must match exactly
+    if ((scanner.cur - scanner.start == start + len) && memcmp(scanner.start + start, rest, len) == 0) {
+        return type;
+    }
+
+    return TOKEN_IDENTIFIER;
 }
 
 static TokenType identifier_type() {
