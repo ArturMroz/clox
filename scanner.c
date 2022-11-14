@@ -52,16 +52,7 @@ static bool is_alpha(char c) {
 
 static char advance() {
     scanner.cur++;
-    return *(scanner.cur - 1);
-    // return scanner.cur[-1];
-}
-
-static bool match(char expected) {
-    if (is_at_end()) return false;
-    if (*scanner.cur != expected) return false;
-
-    scanner.cur++;
-    return true;
+    return scanner.cur[-1];
 }
 
 static char peek() {
@@ -72,6 +63,15 @@ static char peek_next() {
     if (is_at_end()) return '\0';
     return scanner.cur[1];
 }
+
+static bool match(char expected) {
+    if (is_at_end()) return false;
+    if (*scanner.cur != expected) return false;
+
+    scanner.cur++;
+    return true;
+}
+
 static void skip_whitespace() {
     for (;;) {
         char c = peek();

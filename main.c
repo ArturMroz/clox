@@ -51,7 +51,7 @@ static char *read_file(const char *path) {
 }
 
 static void run_file(const char *path) {
-    char *source = read_file(path);
+    char *source           = read_file(path);
     InterpretResult result = interpret(source);
     free(source);
 
