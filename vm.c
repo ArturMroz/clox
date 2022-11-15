@@ -29,7 +29,7 @@ Value pop() {
 }
 
 static InterpretResult run() {
-#define READ_BYTE() (*vm.ip++)
+#define READ_BYTE()     (*vm.ip++)
 #define READ_CONSTANT() (vm.chunk->constants.values[READ_BYTE()])
 #define BINARY_OP(op)     \
     do {                  \
@@ -99,7 +99,7 @@ InterpretResult interpret(const char *source) {
     };
 
     vm.chunk = &chunk;
-    vm.ip = vm.chunk->code;
+    vm.ip    = vm.chunk->code;
 
     InterpretResult result = run();
 
