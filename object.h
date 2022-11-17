@@ -17,14 +17,18 @@ typedef enum {
 
 struct Obj {
     ObjType type;
+    struct Obj *next;
 };
 
 struct ObjString {
     Obj obj;
     int len;
+    // TODO currently 2 allocations are needed: 1) ObjString 2) chars array
+    //      use 'flexible array members' to store ObjString & chars in a single allocation
     char *chars;
 };
 
+ObjString *take_string(char *chars, int length);
 ObjString *copy_string(const char *chars, int length);
 void print_object(Value value);
 

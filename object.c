@@ -12,6 +12,9 @@ static Obj *allocate_object(size_t size, ObjType type) {
     Obj *object  = (Obj *)reallocate(NULL, 0, size);
     object->type = type;
 
+    object->next = vm.objects;
+    vm.objects   = object;
+
     return object;
 }
 
@@ -21,6 +24,10 @@ static ObjString *allocate_string(char *chars, int length) {
     string->chars     = chars;
 
     return string;
+}
+
+ObjString *take_string(char *chars, int length) {
+    return allocate_string(chars, length);
 }
 
 ObjString *copy_string(const char *chars, int length) {
