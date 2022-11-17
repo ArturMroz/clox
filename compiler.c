@@ -4,6 +4,7 @@
 #include "chunk.h"
 #include "common.h"
 #include "compiler.h"
+#include "object.h"
 #include "scanner.h"
 
 #ifdef DEBUG_PRINT_CODE
@@ -152,6 +153,10 @@ static void number() {
     emit_constant(NUMBER_VAL(val));
 }
 
+static void string() {
+    emit_constant(OBJ_VAL(copy_string(parser.prev.start + 1, parser.prev.len - 2)));
+}
+
 static void unary() {
     TokenType operator_type = parser.prev.type;
 
@@ -173,12 +178,12 @@ static void unary() {
 }
 
 static void binary() {
-    TokenType operator_type = parser.prev.type;
-    ParseRule *rule         = get_rule(operator_type);
+    TokenType op_type = parser.prev.type;
+    ParseRule *rule   = get_rule(op_type);
 
     parse_precedence((Precedence)(rule->precedence + 1));
 
-    switch (operator_type) {
+    switch (op_type) {
     case TOKEN_BANG_EQUAL:
         emit_bytes(OP_EQUAL, OP_NOT);
         break;
@@ -253,7 +258,7 @@ ParseRule rules[] = {
     [TOKEN_LESS]          = {NULL,     binary, PREC_COMPARISON},
     [TOKEN_LESS_EQUAL]    = {NULL,     binary, PREC_COMPARISON},
     [TOKEN_IDENTIFIER]    = {NULL,     NULL,   PREC_NONE      },
-    [TOKEN_STRING]        = {NULL,     NULL,   PREC_NONE      },
+    [TOKEN_STRING]        = {string,   NULL,   PREC_NONE      },
     [TOKEN_NUMBER]        = {number,   NULL,   PREC_NONE      },
     [TOKEN_AND]           = {NULL,     NULL,   PREC_NONE      },
     [TOKEN_CLASS]         = {NULL,     NULL,   PREC_NONE      },

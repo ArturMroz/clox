@@ -17,10 +17,12 @@ static int simple_instruction(const char *name, int offset) {
 }
 
 static int constant_instruction(const char *name, Chunk *chunk, int offset) {
-    uint8_t constantAddr = chunk->code[offset + 1];
-    printf("%-16s %4d '", name, constantAddr);
-    print_value(chunk->constants.values[constantAddr]);
+    uint8_t constant_addr = chunk->code[offset + 1];
+
+    printf("%-16s %4d '", name, constant_addr);
+    print_value(chunk->constants.values[constant_addr]);
     printf("'\n");
+
     return offset + 2;
 }
 
