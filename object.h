@@ -23,6 +23,7 @@ struct Obj {
 struct ObjString {
     Obj obj;
     int len;
+    uint32_t hash;
     // TODO currently 2 allocations are needed: 1) ObjString 2) chars array
     //      use 'flexible array members' to store ObjString & chars in a single allocation
     char *chars;
