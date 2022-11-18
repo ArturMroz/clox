@@ -121,3 +121,23 @@ void table_add_all(Table *from, Table *to) {
         }
     }
 }
+
+ObjString *table_find_string(Table *table, const char *chars, int length, uint32_t hash) {
+    if (table->len == 0) return NULL;
+
+    uint32_t index = hash % table->cap;
+    for (;;) {
+        Entry *entry = &table->entries[index];
+        if (entry->key == NULL) {
+            // stop if we find an empty non-tombstone entry
+            if (IS_NIL(entry->value)) return NULL;
+        } else if (entry->key->len == length &&
+                   entry->key->hash == hash &&
+                   memcmp(entry->key->chars, chars, length) == 0) {
+            // we found it
+            return entry->key;
+        }
+
+        index = (index + 1) % table->cap;
+    }
+}

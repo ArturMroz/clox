@@ -54,11 +54,8 @@ bool values_equal(Value a, Value b) {
         return true; // nil == nil
     case VAL_NUMBER:
         return AS_NUMBER(a) == AS_NUMBER(b);
-    case VAL_OBJ: {
-        ObjString *astr = AS_STRING(a);
-        ObjString *bstr = AS_STRING(b);
-        return astr->len == bstr->len && memcmp(astr->chars, bstr->chars, astr->len) == 0;
-    }
+    case VAL_OBJ:
+        return AS_OBJ(a) == AS_OBJ(b);
 
     default:
         return false; // unreachable
