@@ -20,18 +20,39 @@ void free_table(Table *table) {
 }
 
 static Entry *find_entry(Entry *entries, int capacity, ObjString *key) {
-    uint32_t index = key->hash % capacity;
+    uint32_t index   = key->hash % capacity;
+    Entry *tombstone = NULL;
 
     for (;;) {
         Entry *entry = &entries[index];
-        if (entry->key == key || entry->key == NULL) {
+
+        if (entry->key == key) {
+            // found the key
             return entry;
+        } else if (entry->key == NULL) {
+            if (IS_NIL(entry->value)) {
+                // empty entry
+                return tombstone != NULL ? tombstone : entry;
+            } else {
+                // found a tombstone
+                if (tombstone == NULL) tombstone = entry;
+            }
         }
 
         // keep probing until we find an empty bucket
         index++;
         index %= capacity;
     }
+}
+
+bool table_get(Table *table, ObjString *key, Value *value) {
+    if (table->len == 0) return false;
+
+    Entry *entry = find_entry(table->entries, table->cap, key);
+    if (entry->key == NULL) return false;
+
+    *value = entry->value;
+    return true;
 }
 
 static void adjust_capacity(Table *table, int capacity) {
@@ -43,6 +64,10 @@ static void adjust_capacity(Table *table, int capacity) {
         new_entries[i].value = NIL_VAL;
     }
 
+    // we don't want to include tombstones in total num of items
+    // so we're clearing the len and recounting when copying items over below
+    table->len = 0;
+
     for (int i = 0; i < table->cap; i++) {
         Entry *entry = &table->entries[i];
         if (entry->key == NULL) continue;
@@ -50,6 +75,7 @@ static void adjust_capacity(Table *table, int capacity) {
         Entry *dest = find_entry(new_entries, capacity, entry->key);
         dest->key   = entry->key;
         dest->value = entry->value;
+        table->len++;
     }
 
     FREE_ARRAY(Entry, table->entries, table->cap);
@@ -66,12 +92,25 @@ bool table_set(Table *table, ObjString *key, Value value) {
     Entry *entry    = find_entry(table->entries, table->cap, key);
     bool is_new_key = entry->key == NULL;
 
+    if (is_new_key && IS_NIL(entry->value)) table->len++;
+
     entry->key   = key;
     entry->value = value;
 
-    if (is_new_key) table->len++;
-
     return is_new_key;
+}
+
+bool table_delete(Table *table, ObjString *key) {
+    if (table->len == 0) return false;
+
+    Entry *entry = find_entry(table->entries, table->cap, key);
+    if (entry->key == NULL) return false;
+
+    // place a tombstone in the entry
+    entry->key   = NULL;
+    entry->value = BOOL_VAL(true);
+
+    return true;
 }
 
 void table_add_all(Table *from, Table *to) {
