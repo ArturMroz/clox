@@ -97,6 +97,17 @@ static void consume(TokenType type, const char *msg) {
     error_at_current(msg);
 }
 
+static bool check(TokenType type) {
+    return parser.cur.type == type;
+}
+
+static bool match(TokenType type) {
+    if (!check(type)) return false;
+
+    advance();
+    return true;
+}
+
 // EMITTING BYTES
 
 static void emit_byte(uint8_t byte) {
@@ -134,10 +145,14 @@ static void emit_constant(Value val) {
     emit_bytes(OP_CONSTANT, make_constant(val));
 }
 
-// EXPRESSIONS
+// some forward declarations
 
 static ParseRule *get_rule(TokenType type);
 static void parse_precedence(Precedence precedence);
+static void statement();
+static void declaration();
+
+// EXPRESSIONS
 
 static void expression() {
     parse_precedence(PREC_ASSIGNMENT);
@@ -235,6 +250,24 @@ static void literal() {
     }
 }
 
+// STATEMENTS
+
+static void print_statement() {
+    expression();
+    consume(TOKEN_SEMICOLON, "Expect ';' after value.");
+    emit_byte(OP_PRINT);
+}
+
+static void statement() {
+    if (match(TOKEN_PRINT)) {
+        print_statement();
+    }
+}
+
+static void declaration() {
+    statement();
+}
+
 // PRECEDENCE
 
 ParseRule rules[] = {
@@ -312,8 +345,11 @@ bool compile(const char *source, Chunk *chunk) {
     parser.panic_mode = false;
 
     advance();
-    expression();
-    consume(TOKEN_EOF, "Expect end of expression.");
+
+    while (!match(TOKEN_EOF)) {
+        declaration();
+    }
+
     end_compiler();
     return !parser.had_error;
 }

@@ -64,6 +64,7 @@ static void concatenate() {
 
     int len     = a->len + b->len;
     char *chars = ALLOCATE(char, len + 1);
+
     memcpy(chars, a->chars, a->len);
     memcpy(chars + a->len, b->chars, b->len);
     chars[len] = '\0';
@@ -167,9 +168,12 @@ static InterpretResult run() {
             // *(vm.stack_top - 1) = -(*(vm.stack_top - 1));
             break;
 
-        case OP_RETURN: {
+        case OP_PRINT: {
             print_value(pop());
             printf("\n");
+            break;
+        }
+        case OP_RETURN: {
             return INTERPRET_OK;
         }
         }
