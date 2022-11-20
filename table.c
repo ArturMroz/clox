@@ -92,7 +92,9 @@ bool table_set(Table *table, ObjString *key, Value value) {
     Entry *entry    = find_entry(table->entries, table->cap, key);
     bool is_new_key = entry->key == NULL;
 
-    if (is_new_key && IS_NIL(entry->value)) table->len++;
+    if (is_new_key && IS_NIL(entry->value)) {
+        table->len++;
+    }
 
     entry->key   = key;
     entry->value = value;
