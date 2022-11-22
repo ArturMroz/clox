@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "chunk.h"
 #include "common.h"
@@ -40,8 +41,21 @@ typedef struct {
     Precedence precedence;
 } ParseRule;
 
+typedef struct {
+    Token name;
+    int depth;
+} Local;
+
+typedef struct {
+    Local locals[UINT8_MAX + 1];
+    int local_count;
+    int scope_depth;
+} Compiler;
+
+// globals to make things shorter: it's a toy singlethreaded compiler anyway
 Parser parser;
 Chunk *compiling_chunk;
+Compiler *current = NULL;
 
 static Chunk *current_chunk() {
     return compiling_chunk;
@@ -131,6 +145,21 @@ static void end_compiler() {
 #endif
 }
 
+static void begin_scope() {
+    current->scope_depth++;
+}
+
+static void end_scope() {
+    current->scope_depth--;
+
+    while (current->local_count > 0 &&
+           current->locals[current->local_count - 1].depth >
+               current->scope_depth) {
+        emit_byte(OP_POP);
+        current->local_count--;
+    }
+}
+
 static uint8_t make_constant(Value val) {
     int constant = add_constant(current_chunk(), val);
     if (constant > UINT8_MAX) {
@@ -145,6 +174,11 @@ static void emit_constant(Value val) {
     emit_bytes(OP_CONSTANT, make_constant(val));
 }
 
+static void init_compiler(Compiler *compiler) {
+    compiler->local_count = 0;
+    compiler->scope_depth = 0;
+    current               = compiler;
+}
 // some forward declarations
 
 static ParseRule *get_rule(TokenType type);
@@ -156,6 +190,14 @@ static void declaration();
 
 static void expression() {
     parse_precedence(PREC_ASSIGNMENT);
+}
+
+static void block() {
+    while (!check(TOKEN_RIGHT_BRACE) && !check(TOKEN_EOF)) {
+        declaration();
+    }
+
+    consume(TOKEN_RIGHT_BRACE, "Expect '}' after block.");
 }
 
 static void grouping(bool can_assign) {
@@ -178,6 +220,42 @@ static uint8_t identifier_constant(Token *name) {
     // bytecode stream as an operand. Instead, we store the string in the
     // constant table and the instruction then refers to the name by its index.
     return make_constant(OBJ_VAL(copy_string(name->start, name->len)));
+}
+
+static bool identifiers_are_equal(Token *a, Token *b) {
+    if (a->len != b->len) return false;
+    return memcmp(a->start, b->start, a->len) == 0;
+}
+
+static void add_local(Token name) {
+    if (current->local_count == UINT8_MAX + 1) {
+        error("Too many local variables.");
+        return;
+    }
+
+    Local *local = &current->locals[current->local_count++];
+    local->name  = name;
+    local->depth = current->scope_depth;
+}
+
+static void declare_variable() {
+    if (current->scope_depth == 0) return;
+
+    Token *name = &parser.prev;
+
+    // prevent redeclaring a variable inside the same scope
+    for (int i = current->local_count - 1; i >= 0; i--) {
+        Local *local = &current->locals[i];
+        if (local->depth != -1 && local->depth < current->scope_depth) {
+            break;
+        }
+
+        if (identifiers_are_equal(name, &local->name)) {
+            error("Already a variable with this name in this scope.");
+        }
+    }
+
+    add_local(*name);
 }
 
 static void named_variable(Token name, bool can_assign) {
@@ -290,6 +368,10 @@ static void print_statement() {
 static void statement() {
     if (match(TOKEN_PRINT)) {
         print_statement();
+    } else if (match(TOKEN_LEFT_BRACE)) {
+        begin_scope();
+        block();
+        end_scope();
     } else {
         expression_statement();
     }
@@ -322,10 +404,18 @@ static void sync() {
 
 static uint8_t parse_variable(const char *err_msg) {
     consume(TOKEN_IDENTIFIER, err_msg);
+    declare_variable();
+
+    // bail if we're in olcal scope - at runtime locals aren't loooked up by name
+    if (current->scope_depth > 0) return 0;
+
     return identifier_constant(&parser.prev);
 }
 
 static void define_variable(uint8_t global) {
+    // locals are already on the stack, there's nothing for us to do here
+    if (current->scope_depth > 0) return;
+
     emit_bytes(OP_DEFINE_GLOBAL, global);
 }
 
@@ -430,6 +520,10 @@ static void parse_precedence(Precedence precedence) {
 
 bool compile(const char *source, Chunk *chunk) {
     init_scanner(source);
+
+    Compiler compiler;
+    init_compiler(&compiler);
+
     compiling_chunk = chunk;
 
     parser.had_error  = false;
