@@ -258,14 +258,36 @@ static void declare_variable() {
     add_local(*name);
 }
 
+static int resolve_local_idx(Compiler *compiler, Token *name) {
+    // take it from behind so we ensure we find last declared variable as we support shadowing
+    for (int i = compiler->local_count - 1; i >= 0; i--) {
+        Local *local = &compiler->locals[i];
+        if (identifiers_equal(name, &local->name)) {
+            return i;
+        }
+    }
+
+    return -1;
+}
+
 static void named_variable(Token name, bool can_assign) {
-    uint8_t arg = identifier_constant(&name);
+    uint8_t get_op, set_op;
+    int arg = resolve_local_idx(current, &name);
+
+    if (arg == -1) {
+        arg    = identifier_constant(&name);
+        get_op = OP_GET_GLOBAL;
+        set_op = OP_SET_GLOBAL;
+    } else {
+        get_op = OP_GET_LOCAL;
+        set_op = OP_SET_LOCAL;
+    }
 
     if (can_assign && match(TOKEN_EQUAL)) {
         expression();
-        emit_bytes(OP_SET_GLOBAL, arg);
+        emit_bytes(set_op, (uint8_t)arg);
     } else {
-        emit_bytes(OP_GET_GLOBAL, arg);
+        emit_bytes(get_op, (uint8_t)arg);
     }
 }
 
