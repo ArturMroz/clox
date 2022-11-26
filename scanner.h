@@ -46,6 +46,7 @@ typedef enum {
     TOKEN_THIS,
     TOKEN_TRUE,
     TOKEN_VAR,
+    TOKEN_CONST, // TODO implement keyword for declaring constants
     TOKEN_WHILE,
 
     TOKEN_ERROR,
