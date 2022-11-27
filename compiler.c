@@ -397,6 +397,26 @@ static void literal(bool can_assign) {
     }
 }
 
+static void and_(bool can_assign) {
+    int end_jump = emit_jump(OP_JUMP_IF_FALSE);
+
+    emit_byte(OP_POP);
+    parse_precedence(PREC_AND);
+
+    patch_jump(end_jump);
+}
+
+static void or_(bool can_assign) {
+    int else_jump = emit_jump(OP_JUMP_IF_FALSE);
+    int end_jump  = emit_jump(OP_JUMP);
+
+    patch_jump(else_jump);
+    emit_byte(OP_POP);
+
+    parse_precedence(PREC_OR);
+    patch_jump(end_jump);
+}
+
 // STATEMENTS
 
 static void expression_statement() {
@@ -542,7 +562,7 @@ ParseRule rules[] = {
     [TOKEN_IDENTIFIER]    = {variable, NULL,   PREC_NONE      },
     [TOKEN_STRING]        = {string,   NULL,   PREC_NONE      },
     [TOKEN_NUMBER]        = {number,   NULL,   PREC_NONE      },
-    [TOKEN_AND]           = {NULL,     NULL,   PREC_NONE      },
+    [TOKEN_AND]           = {NULL,     and_,   PREC_NONE      },
     [TOKEN_CLASS]         = {NULL,     NULL,   PREC_NONE      },
     [TOKEN_ELSE]          = {NULL,     NULL,   PREC_NONE      },
     [TOKEN_FALSE]         = {literal,  NULL,   PREC_NONE      },
@@ -550,7 +570,7 @@ ParseRule rules[] = {
     [TOKEN_FUN]           = {NULL,     NULL,   PREC_NONE      },
     [TOKEN_IF]            = {NULL,     NULL,   PREC_NONE      },
     [TOKEN_NIL]           = {literal,  NULL,   PREC_NONE      },
-    [TOKEN_OR]            = {NULL,     NULL,   PREC_NONE      },
+    [TOKEN_OR]            = {NULL,     or_,    PREC_NONE      },
     [TOKEN_PRINT]         = {NULL,     NULL,   PREC_NONE      },
     [TOKEN_RETURN]        = {NULL,     NULL,   PREC_NONE      },
     [TOKEN_SUPER]         = {NULL,     NULL,   PREC_NONE      },
