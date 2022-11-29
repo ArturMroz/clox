@@ -441,7 +441,7 @@ static void print_statement() {
     emit_byte(OP_PRINT);
 }
 
-static void whileStatement() {
+static void while_statement() {
     int loop_start = current_chunk()->len;
 
     consume(TOKEN_LEFT_PAREN, "Expect '(' after 'while'.");
@@ -456,6 +456,61 @@ static void whileStatement() {
 
     patch_jump(exit_jump);
     emit_byte(OP_POP);
+}
+
+static void forStatement() {
+    begin_scope();
+
+    consume(TOKEN_LEFT_PAREN, "Expect '(' after 'for'.");
+
+    // initialiser
+    if (match(TOKEN_SEMICOLON)) {
+        // no initializer
+    } else if (match(TOKEN_VAR)) {
+        var_declaration();
+    } else {
+        expression_statement();
+    }
+
+    int loop_start = current_chunk()->len;
+
+    // condition expression to exit the loop
+    int exit_jump = -1;
+    if (!match(TOKEN_SEMICOLON)) {
+        expression();
+        consume(TOKEN_SEMICOLON, "Expect ';' after loop condition.");
+
+        // jump out of the loop if the condition is false
+        exit_jump = emit_jump(OP_JUMP_IF_FALSE);
+        emit_byte(OP_POP); // pop the condition value from the stack
+    }
+
+    // increment clause
+    if (!match(TOKEN_RIGHT_PAREN)) {
+        int body_jump       = emit_jump(OP_JUMP);
+        int increment_start = current_chunk()->len;
+
+        expression();
+
+        // discard the value from the stack as we only care about side effects in increment clause
+        emit_byte(OP_POP);
+
+        consume(TOKEN_RIGHT_PAREN, "Expect ')' after for clauses.");
+
+        emit_loop(loop_start);
+        loop_start = increment_start;
+        patch_jump(body_jump);
+    }
+
+    statement();
+    emit_loop(loop_start);
+
+    if (exit_jump != -1) {
+        patch_jump(exit_jump);
+        emit_byte(OP_POP); // condition
+    }
+
+    end_scope();
 }
 
 static void if_statement() {
@@ -482,7 +537,9 @@ static void statement() {
     } else if (match(TOKEN_IF)) {
         if_statement();
     } else if (match(TOKEN_WHILE)) {
-        whileStatement();
+        while_statement();
+    } else if (match(TOKEN_FOR)) {
+        for_statement();
     } else if (match(TOKEN_LEFT_BRACE)) {
         begin_scope();
         block();
