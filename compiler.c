@@ -216,6 +216,7 @@ static ParseRule *get_rule(TokenType type);
 static void parse_precedence(Precedence precedence);
 static void statement();
 static void declaration();
+static void var_declaration();
 
 // EXPRESSIONS
 
@@ -458,14 +459,14 @@ static void while_statement() {
     emit_byte(OP_POP);
 }
 
-static void forStatement() {
+static void for_statement() {
     begin_scope();
 
     consume(TOKEN_LEFT_PAREN, "Expect '(' after 'for'.");
 
     // initialiser
     if (match(TOKEN_SEMICOLON)) {
-        // no initializer
+        // empty initialiser
     } else if (match(TOKEN_VAR)) {
         var_declaration();
     } else {

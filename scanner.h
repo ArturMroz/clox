@@ -31,6 +31,9 @@ typedef enum {
     TOKEN_NUMBER,
 
     // Keywords.
+    // TODO add 'switch'
+    // TODO add 'continue' & 'break'
+    // TODO add 'const'
     TOKEN_AND,
     TOKEN_CLASS,
     TOKEN_ELSE,
@@ -46,7 +49,6 @@ typedef enum {
     TOKEN_THIS,
     TOKEN_TRUE,
     TOKEN_VAR,
-    TOKEN_CONST, // TODO implement keyword for declaring constants
     TOKEN_WHILE,
 
     TOKEN_ERROR,
