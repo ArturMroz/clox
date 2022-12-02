@@ -19,7 +19,7 @@ static Obj *allocate_object(size_t size, ObjType type) {
     return object;
 }
 
-ObjFunction *newFunction() {
+ObjFunction *new_function() {
     ObjFunction *function = ALLOCATE_OBJ(ObjFunction, OBJ_FUNCTION);
     function->arity       = 0;
     function->name        = NULL;
