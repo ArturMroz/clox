@@ -46,7 +46,14 @@ typedef struct {
     int depth;
 } Local;
 
+typedef enum {
+    TYPE_FUNCTION,
+    TYPE_SCRIPT
+} FunctionType;
+
 typedef struct {
+    ObjFunction *function;
+    FunctionType type;
     Local locals[UINT8_MAX + 1];
     int local_count;
     int scope_depth;
@@ -57,8 +64,8 @@ Parser parser;
 Chunk *compiling_chunk;
 Compiler *current = NULL;
 
-static Chunk *current_chunk() {
-    return compiling_chunk;
+static Chunk *cur_chunk() {
+    return &current->function->chunk;
 }
 
 // ERROR REPORTING
@@ -125,7 +132,7 @@ static bool match(TokenType type) {
 // EMITTING BYTES
 
 static void emit_byte(uint8_t byte) {
-    write_chunk(current_chunk(), byte, parser.prev.line);
+    write_chunk(cur_chunk(), byte, parser.prev.line);
 }
 
 static void emit_bytes(uint8_t byte1, uint8_t byte2) {
@@ -138,13 +145,13 @@ static int emit_jump(uint8_t instruction) {
     // placeholder values to be patched later
     emit_byte(0xff);
     emit_byte(0xff);
-    return current_chunk()->len - 2;
+    return cur_chunk()->len - 2;
 }
 
 static void emit_loop(int loop_start) {
     emit_byte(OP_LOOP);
 
-    int offset = current_chunk()->len - loop_start + 2;
+    int offset = cur_chunk()->len - loop_start + 2;
     if (offset > UINT16_MAX) error("Loop body too large.");
 
     emit_byte((offset >> 8) & 0xff);
@@ -155,12 +162,18 @@ static void emit_return() {
     emit_byte(OP_RETURN);
 }
 
-static void end_compiler() {
+static ObjFunction *end_compiler() {
     emit_return();
 
+    ObjFunction *fn = current->function;
+
 #ifdef DEBUG_PRINT_CODE
-    if (!parser.had_error) disassemble_chunk(current_chunk(), "code");
+    if (!parser.had_error) {
+        disassemble_chunk(current_chunk(), fn->name != NULL ? fn->name->chars : "<script>");
+    }
 #endif
+
+    return fn;
 }
 
 static void begin_scope() {
@@ -179,7 +192,7 @@ static void end_scope() {
 }
 
 static uint8_t make_constant(Value val) {
-    int constant = add_constant(current_chunk(), val);
+    int constant = add_constant(cur_chunk(), val);
     if (constant > UINT8_MAX) {
         error("Too many constants in one chunk.");
         return 0;
@@ -194,20 +207,28 @@ static void emit_constant(Value val) {
 
 static void patch_jump(int offset) {
     // -2 to adjust for the bytecode for the jump offset itself.
-    int jump = current_chunk()->len - offset - 2;
+    int jump = cur_chunk()->len - offset - 2;
 
     if (jump > UINT16_MAX) {
         error("Too much code to jump over.");
     }
 
-    current_chunk()->code[offset]     = (jump >> 8) & 0xff;
-    current_chunk()->code[offset + 1] = jump & 0xff;
+    cur_chunk()->code[offset]     = (jump >> 8) & 0xff;
+    cur_chunk()->code[offset + 1] = jump & 0xff;
 }
 
-static void init_compiler(Compiler *compiler) {
+static void init_compiler(Compiler *compiler, FunctionType type) {
+    compiler->function    = NULL;
+    compiler->type        = type;
     compiler->local_count = 0;
     compiler->scope_depth = 0;
+    compiler->function    = new_function(); // assigning to function again, GC-related paranoia
     current               = compiler;
+
+    Local *local      = &current->locals[current->local_count++];
+    local->depth      = 0;
+    local->name.start = ""; // assign empty name so the user cannot refer to it
+    local->name.len   = 0;
 }
 
 // some forward declarations
@@ -443,7 +464,7 @@ static void print_statement() {
 }
 
 static void while_statement() {
-    int loop_start = current_chunk()->len;
+    int loop_start = cur_chunk()->len;
 
     consume(TOKEN_LEFT_PAREN, "Expect '(' after 'while'.");
     expression();
@@ -473,7 +494,7 @@ static void for_statement() {
         expression_statement();
     }
 
-    int loop_start = current_chunk()->len;
+    int loop_start = cur_chunk()->len;
 
     // condition expression to exit the loop
     int exit_jump = -1;
@@ -489,7 +510,7 @@ static void for_statement() {
     // increment clause
     if (!match(TOKEN_RIGHT_PAREN)) {
         int body_jump       = emit_jump(OP_JUMP);
-        int increment_start = current_chunk()->len;
+        int increment_start = cur_chunk()->len;
 
         expression();
 
@@ -698,13 +719,13 @@ static void parse_precedence(Precedence precedence) {
 
 // MAIN
 
-bool compile(const char *source, Chunk *chunk) {
+ObjFunction *compile(const char *source) {
     init_scanner(source);
 
     Compiler compiler;
-    init_compiler(&compiler);
+    init_compiler(&compiler, TYPE_SCRIPT);
 
-    compiling_chunk = chunk;
+    // compiling_chunk = chunk;
 
     parser.had_error  = false;
     parser.panic_mode = false;
@@ -715,6 +736,6 @@ bool compile(const char *source, Chunk *chunk) {
         declaration();
     }
 
-    end_compiler();
-    return !parser.had_error;
+    ObjFunction *function = end_compiler();
+    return parser.had_error ? NULL : function;
 }

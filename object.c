@@ -72,8 +72,12 @@ ObjString *copy_string(const char *chars, int length) {
     return allocate_string(heap_chars, length, hash);
 }
 
-static void print_function(ObjFunction *function) {
-    printf("<fn %s>", function->name->chars);
+static void print_function(ObjFunction *fn) {
+    if (fn->name == NULL) {
+        printf("<script>");
+        return;
+    }
+    printf("<fn %s>", fn->name->chars);
 }
 
 void print_object(Value value) {
