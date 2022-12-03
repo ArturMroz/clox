@@ -117,9 +117,10 @@ static InterpretResult run() {
 #endif
 
         uint8_t instruction;
-        switch (instruction = *vm.ip++) {
+
+        switch (instruction = READ_BYTE()) {
         case OP_CONSTANT: {
-            Value constant = vm.chunk->constants.values[*vm.ip++];
+            Value constant = READ_CONSTANT();
             push(constant);
             print_value(constant);
             printf("\n");
