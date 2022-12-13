@@ -160,6 +160,7 @@ static void emit_loop(int loop_start) {
 }
 
 static void emit_return() {
+    emit_byte(OP_NIL);
     emit_byte(OP_RETURN);
 }
 
@@ -333,6 +334,22 @@ static void define_variable(uint8_t global) {
     emit_bytes(OP_DEFINE_GLOBAL, global);
 }
 
+static uint8_t argument_list() {
+    uint8_t arg_count = 0;
+    if (!check(TOKEN_RIGHT_PAREN)) {
+        do {
+            expression();
+            if (arg_count == 255) {
+                error("Can't have more than 255 arguments.");
+            }
+            arg_count++;
+        } while (match(TOKEN_COMMA));
+    }
+
+    consume(TOKEN_RIGHT_PAREN, "Expect ')' after arguments.");
+    return arg_count;
+}
+
 static int resolve_local_idx(Compiler *compiler, Token *name) {
     // take it from behind so we ensure we find last declared variable as we support shadowing
     for (int i = compiler->local_count - 1; i >= 0; i--) {
@@ -391,6 +408,11 @@ static void unary(bool can_assign) {
     default:
         return; // unreachable
     }
+}
+
+static void call(bool can_assign) {
+    uint8_t arg_count = argument_list();
+    emit_bytes(OP_CALL, arg_count);
 }
 
 static void binary(bool can_assign) {
@@ -689,7 +711,7 @@ static void declaration() {
 // PRECEDENCE
 
 ParseRule rules[] = {
-    [TOKEN_LEFT_PAREN]    = {grouping, NULL,   PREC_NONE      },
+    [TOKEN_LEFT_PAREN]    = {grouping, call,   PREC_CALL      },
     [TOKEN_RIGHT_PAREN]   = {NULL,     NULL,   PREC_NONE      },
     [TOKEN_LEFT_BRACE]    = {NULL,     NULL,   PREC_NONE      },
     [TOKEN_RIGHT_BRACE]   = {NULL,     NULL,   PREC_NONE      },
