@@ -14,26 +14,28 @@ Scanner scanner;
 
 void init_scanner(const char *source) {
     scanner.start = source;
-    scanner.cur = source;
-    scanner.line = 1;
+    scanner.cur   = source;
+    scanner.line  = 1;
 }
 
 static Token make_token(TokenType type) {
-    Token tok;
-    tok.type = type;
-    tok.start = scanner.start;
-    tok.len = (int)(scanner.cur - scanner.start);
-    tok.line = scanner.line;
+    Token tok = {
+        .type  = type,
+        .start = scanner.start,
+        .len   = (int)(scanner.cur - scanner.start),
+        .line  = scanner.line,
+    };
 
     return tok;
 }
 
 static Token error_token(const char *msg) {
-    Token tok;
-    tok.type = TOKEN_ERROR;
-    tok.start = msg;
-    tok.len = (int)strlen(msg);
-    tok.line = scanner.line;
+    Token tok = {
+        .type  = TOKEN_ERROR,
+        .start = msg,
+        .len   = (int)strlen(msg),
+        .line  = scanner.line,
+    };
 
     return tok;
 }
@@ -197,8 +199,9 @@ static TokenType identifier_type() {
 }
 
 static Token identifier() {
-    while (is_alpha(peek()) || is_digit(peek()))
+    while (is_alpha(peek()) || is_digit(peek())) {
         advance();
+    }
 
     return make_token(identifier_type());
 }
@@ -213,9 +216,6 @@ Token scan_token() {
     if (is_at_end()) return make_token(TOKEN_EOF);
 
     char c = advance();
-
-    if (is_alpha(c)) return identifier();
-    if (is_digit(c)) return number();
 
     switch (c) {
     case '(':
@@ -252,7 +252,11 @@ Token scan_token() {
 
     case '"':
         return string();
-    }
 
-    return error_token("Unexpected character.");
+    default:
+        if (is_alpha(c)) return identifier();
+        if (is_digit(c)) return number();
+
+        return error_token("Unexpected character.");
+    }
 }
