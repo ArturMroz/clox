@@ -10,8 +10,7 @@
 #define ALLOCATE_OBJ(type, objectType) (type *)allocate_object(sizeof(type), objectType)
 
 static Obj *allocate_object(size_t size, ObjType type) {
-    Obj *object = (Obj *)reallocate(NULL, 0, size);
-
+    Obj *object  = (Obj *)reallocate(NULL, 0, size);
     object->type = type;
     object->next = vm.objects;
     vm.objects   = object;
@@ -26,6 +25,12 @@ ObjFunction *new_function() {
     init_chunk(&function->chunk);
 
     return function;
+}
+
+ObjNative *new_native(NativeFn function) {
+    ObjNative *native = ALLOCATE_OBJ(ObjNative, OBJ_NATIVE);
+    native->function  = function;
+    return native;
 }
 
 static ObjString *allocate_string(char *chars, int length, uint32_t hash) {
@@ -46,6 +51,7 @@ static uint32_t hash_string(const char *key, int length) {
         hash ^= (uint8_t)key[i];
         hash *= 16777619;
     }
+
     return hash;
 }
 
@@ -84,6 +90,9 @@ void print_object(Value value) {
     switch (OBJ_TYPE(value)) {
     case OBJ_FUNCTION:
         print_function(AS_FUNCTION(value));
+        break;
+    case OBJ_NATIVE:
+        printf("<native fn>");
         break;
     case OBJ_STRING:
         printf("%s", AS_CSTRING(value));

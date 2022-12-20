@@ -1,6 +1,7 @@
 #include <stdarg.h>
 #include <stdio.h>
 #include <string.h>
+#include <time.h>
 
 #include "common.h"
 #include "compiler.h"
@@ -11,9 +12,55 @@
 
 VM vm;
 
+static void push(Value value) {
+    *vm.stack_top = value;
+    vm.stack_top++;
+}
+
+static Value pop() {
+    vm.stack_top--;
+    return *vm.stack_top;
+}
+
+static Value peek(int distance) {
+    return vm.stack_top[-1 - distance];
+}
+
+static void define_native(const char *name, NativeFn function) {
+    // we push & pop these vars to make sure GC doesn't free them out from under us
+    push(OBJ_VAL(copy_string(name, (int)strlen(name))));
+    push(OBJ_VAL(new_native(function)));
+
+    table_set(&vm.globals, AS_STRING(vm.stack[0]), vm.stack[1]);
+
+    pop();
+    pop();
+}
+
+static Value clock_native(int argCount, Value *args) {
+    return NUMBER_VAL((double)clock() / CLOCKS_PER_SEC);
+}
+
 static void reset_stack() {
     vm.stack_top   = vm.stack;
     vm.frame_count = 0;
+}
+
+void init_vm() {
+    reset_stack();
+    vm.objects = NULL;
+    init_table(&vm.strings);
+    init_table(&vm.globals);
+
+    define_native("clock", clock_native);
+}
+
+void free_vm() {
+    // the process will free everything on exit, but it feels undignified to
+    // require the operating system to clean up our mess
+    free_objects();
+    free_table(&vm.strings);
+    free_table(&vm.globals);
 }
 
 static void runtime_error(const char *fmt, ...) {
@@ -46,35 +93,6 @@ static void runtime_error(const char *fmt, ...) {
     reset_stack();
 }
 
-void init_vm() {
-    reset_stack();
-    vm.objects = NULL;
-    init_table(&vm.strings);
-    init_table(&vm.globals);
-}
-
-void free_vm() {
-    // The process will free everything on exit, but it feels undignified to
-    // require the operating system to clean up our mess.
-    free_objects();
-    free_table(&vm.strings);
-    free_table(&vm.globals);
-}
-
-static void push(Value value) {
-    *vm.stack_top = value;
-    vm.stack_top++;
-}
-
-static Value pop() {
-    vm.stack_top--;
-    return *vm.stack_top;
-}
-
-static Value peek(int distance) {
-    return vm.stack_top[-1 - distance];
-}
-
 static bool call(ObjFunction *function, int arg_count) {
     if (arg_count != function->arity) {
         runtime_error("Expected %d arguments but got %d.", function->arity, arg_count);
@@ -99,8 +117,16 @@ static bool call_value(Value callee, int arg_count) {
         switch (OBJ_TYPE(callee)) {
         case OBJ_FUNCTION:
             return call(AS_FUNCTION(callee), arg_count);
+        case OBJ_NATIVE: {
+            NativeFn native = AS_NATIVE(callee);
+            // TODO validate arity & types before calling native
+            Value result = native(arg_count, vm.stack_top - arg_count);
+            vm.stack_top -= arg_count + 1;
+            push(result);
+            return true;
+        }
         default:
-            break; // Non-callable object type.
+            break; // non-callable object type
         }
     }
 
@@ -129,6 +155,10 @@ static void concatenate() {
 
 static InterpretResult run() {
     CallFrame *frame = &vm.frames[vm.frame_count - 1];
+
+    // TODO currently we access ip thru a pointer - it would be much more efficient if we stored it
+    // in a local var marked as 'register', so the compiler considers putting it in a native CPU register;
+    // this would require more code & care when we store local ip back into correct CallFrame tho
 
 #define READ_BYTE() (*frame->ip++)
 
@@ -213,8 +243,7 @@ static InterpretResult run() {
         case OP_DEFINE_GLOBAL: {
             ObjString *name = READ_STRING();
             table_set(&vm.globals, name, peek(0));
-            // pop value only after it has been added to hashtable, in case GC
-            // is triggered in the middle
+            // pop value only after it has been added to hashtable, in case GC is triggered meanwhile
             pop();
             break;
         }
@@ -282,6 +311,7 @@ static InterpretResult run() {
             printf("\n");
             break;
         }
+
         case OP_JUMP: {
             uint16_t offset = READ_SHORT();
             frame->ip += offset;
