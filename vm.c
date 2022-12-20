@@ -68,18 +68,20 @@ static void runtime_error(const char *fmt, ...) {
     va_start(args, fmt);
     vfprintf(stderr, fmt, args);
     va_end(args);
+
     fputs("\n", stderr);
 
     CallFrame *frame = &vm.frames[vm.frame_count - 1];
-    size_t ins       = frame->ip - frame->function->chunk.code - 1;
-    int line         = frame->function->chunk.lines[ins];
+    ObjFunction *fn  = frame->closure->function;
+    size_t ins       = frame->ip - fn->chunk.code - 1;
+    int line         = fn->chunk.lines[ins];
 
     fprintf(stderr, "[line %d] in script\n", line);
 
     // dump stack trace
     for (int i = vm.frame_count - 1; i >= 0; i--) {
         CallFrame *frame = &vm.frames[i];
-        ObjFunction *fn  = frame->function;
+        ObjFunction *fn  = frame->closure->function;
         size_t ins       = frame->ip - fn->chunk.code - 1;
 
         fprintf(stderr, "[line %d] in ", fn->chunk.lines[ins]);
@@ -93,9 +95,9 @@ static void runtime_error(const char *fmt, ...) {
     reset_stack();
 }
 
-static bool call(ObjFunction *function, int arg_count) {
-    if (arg_count != function->arity) {
-        runtime_error("Expected %d arguments but got %d.", function->arity, arg_count);
+static bool call(ObjClosure *closure, int arg_count) {
+    if (arg_count != closure->function->arity) {
+        runtime_error("Expected %d arguments but got %d.", closure->function->arity, arg_count);
         return false;
     }
 
@@ -105,8 +107,8 @@ static bool call(ObjFunction *function, int arg_count) {
     }
 
     CallFrame *frame = &vm.frames[vm.frame_count++];
-    frame->function  = function;
-    frame->ip        = function->chunk.code;
+    frame->closure   = closure;
+    frame->ip        = closure->function->chunk.code;
     frame->slots     = vm.stack_top - arg_count - 1;
 
     return true;
@@ -115,8 +117,8 @@ static bool call(ObjFunction *function, int arg_count) {
 static bool call_value(Value callee, int arg_count) {
     if (IS_OBJ(callee)) {
         switch (OBJ_TYPE(callee)) {
-        case OBJ_FUNCTION:
-            return call(AS_FUNCTION(callee), arg_count);
+        case OBJ_CLOSURE:
+            return call(AS_CLOSURE(callee), arg_count);
         case OBJ_NATIVE: {
             NativeFn native = AS_NATIVE(callee);
             // TODO validate arity & types before calling native
@@ -166,7 +168,7 @@ static InterpretResult run() {
     (frame->ip += 2, (uint16_t)((frame->ip[-2] << 8) | frame->ip[-1]))
 
 #define READ_CONSTANT() \
-    (frame->function->chunk.constants.values[READ_BYTE()])
+    (frame->closure->function->chunk.constants.values[READ_BYTE()])
 
 #define READ_STRING() AS_STRING(READ_CONSTANT())
 #define BINARY_OP(valueType, op)                          \
@@ -190,8 +192,8 @@ static InterpretResult run() {
         }
         printf("\n");
         disassemble_instruction(
-            &frame->function->chunk,
-            (int)(frame->ip - frame->function->chunk.code));
+            &frame->closure->function->chunk,
+            (int)(frame->ip - frame->closure->function->chunk.code));
 #endif
 
         uint8_t instruction;
@@ -335,6 +337,12 @@ static InterpretResult run() {
             frame = &vm.frames[vm.frame_count - 1];
             break;
         }
+        case OP_CLOSURE: {
+            ObjFunction *fn     = AS_FUNCTION(READ_CONSTANT());
+            ObjClosure *closure = new_closure(fn);
+            push(OBJ_VAL(closure));
+            break;
+        }
 
         case OP_RETURN: {
             Value result = pop();
@@ -367,7 +375,12 @@ InterpretResult interpret(const char *source) {
 
     // top level function, kinda like 'main' if you squint
     push(OBJ_VAL(function));
-    call(function, 0);
+    ObjClosure *closure = new_closure(function);
+
+    // a bit of push & pop dance to keep GC aware of heap allocations
+    pop();
+    push(OBJ_VAL(closure));
+    call(closure, 0);
 
     return run();
 }

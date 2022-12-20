@@ -27,6 +27,10 @@ static void free_object(Obj *object) {
     case OBJ_NATIVE:
         FREE(ObjNative, object);
         break;
+    case OBJ_CLOSURE: {
+        FREE(ObjClosure, object);
+        break;
+    }
     case OBJ_STRING: {
         ObjString *str = (ObjString *)object;
         FREE_ARRAY(char, str->chars, str->len + 1);
