@@ -20,8 +20,9 @@ static Obj *allocate_object(size_t size, ObjType type) {
 
 ObjFunction *new_function() {
     ObjFunction *function = ALLOCATE_OBJ(ObjFunction, OBJ_FUNCTION);
-    function->arity       = 0;
-    function->name        = NULL;
+    function->arity         = 0;
+    function->upvalue_count = 0;
+    function->name          = NULL;
     init_chunk(&function->chunk);
 
     return function;
