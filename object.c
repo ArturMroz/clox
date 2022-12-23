@@ -19,10 +19,11 @@ static Obj *allocate_object(size_t size, ObjType type) {
 }
 
 ObjFunction *new_function() {
-    ObjFunction *function = ALLOCATE_OBJ(ObjFunction, OBJ_FUNCTION);
+    ObjFunction *function   = ALLOCATE_OBJ(ObjFunction, OBJ_FUNCTION);
     function->arity         = 0;
     function->upvalue_count = 0;
     function->name          = NULL;
+
     init_chunk(&function->chunk);
 
     return function;
@@ -31,12 +32,22 @@ ObjFunction *new_function() {
 ObjNative *new_native(NativeFn function) {
     ObjNative *native = ALLOCATE_OBJ(ObjNative, OBJ_NATIVE);
     native->function  = function;
+
     return native;
 }
 
 ObjClosure *new_closure(ObjFunction *function) {
-    ObjClosure *closure = ALLOCATE_OBJ(ObjClosure, OBJ_CLOSURE);
-    closure->function   = function;
+    ObjUpvalue **upvalues = ALLOCATE(ObjUpvalue *, function->upvalue_count);
+    for (int i = 0; i < function->upvalue_count; i++) {
+        // please garbage collection deities - ensure memory manager never sees uninitialized memory
+        upvalues[i] = NULL;
+    }
+
+    ObjClosure *closure    = ALLOCATE_OBJ(ObjClosure, OBJ_CLOSURE);
+    closure->function      = function;
+    closure->upvalues      = upvalues;
+    closure->upvalue_count = function->upvalue_count;
+
     return closure;
 }
 
@@ -85,6 +96,12 @@ ObjString *copy_string(const char *chars, int length) {
     return allocate_string(heap_chars, length, hash);
 }
 
+ObjUpvalue *newUpvalue(Value *slot) {
+    ObjUpvalue *upvalue = ALLOCATE_OBJ(ObjUpvalue, OBJ_UPVALUE);
+    upvalue->location   = slot;
+    return upvalue;
+}
+
 static void print_function(ObjFunction *fn) {
     if (fn->name == NULL) {
         printf("<script>");
@@ -106,6 +123,9 @@ void print_object(Value value) {
         break;
     case OBJ_STRING:
         printf("%s", AS_CSTRING(value));
+        break;
+    case OBJ_UPVALUE:
+        printf("upvalue");
         break;
     }
 }
