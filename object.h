@@ -43,6 +43,13 @@ typedef Value (*NativeFn)(int arg_count, Value *args);
 
 typedef struct {
     Obj obj;
+    Value *location;
+    struct ObjUpvalue *next;
+    Value closed;
+} ObjUpvalue;
+
+typedef struct {
+    Obj obj;
     NativeFn function;
 } ObjNative;
 
@@ -61,11 +68,6 @@ struct ObjString {
     //      use 'flexible array members' to store ObjString & chars in a single allocation
     char *chars;
 };
-
-typedef struct ObjUpvalue {
-    Obj obj;
-    Value *location;
-} ObjUpvalue;
 
 ObjFunction *new_function();
 ObjNative *new_native(NativeFn function);

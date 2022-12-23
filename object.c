@@ -96,9 +96,12 @@ ObjString *copy_string(const char *chars, int length) {
     return allocate_string(heap_chars, length, hash);
 }
 
-ObjUpvalue *newUpvalue(Value *slot) {
+ObjUpvalue *new_upvalue(Value *slot) {
     ObjUpvalue *upvalue = ALLOCATE_OBJ(ObjUpvalue, OBJ_UPVALUE);
     upvalue->location   = slot;
+    upvalue->next       = NULL;
+    upvalue->closed     = NIL_VAL;
+
     return upvalue;
 }
 
