@@ -23,10 +23,14 @@ typedef struct {
     uint8_t *ip;
     Value stack[STACK_MAX];
     Value *stack_top;
+
     Table globals;
     Table strings;
     ObjUpvalue *open_upvalues;
     Obj *objects;
+
+    size_t bytes_allocated;
+    size_t next_gc;
     int gray_count;
     int gray_capacity;
     Obj **gray_stack;
@@ -42,6 +46,8 @@ extern VM vm;
 
 void init_vm();
 void free_vm();
+void push(Value value);
+Value pop();
 InterpretResult interpret(const char *source);
 
 #endif

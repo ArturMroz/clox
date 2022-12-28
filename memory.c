@@ -9,11 +9,19 @@
 #include <stdio.h>
 #endif
 
+#define GC_HEAP_GROW_FACTOR 2
+
 void *reallocate(void *pointer, size_t old_size, size_t new_size) {
+    vm.bytes_allocated += new_size - old_size;
+
     if (new_size > old_size) {
 #ifdef DEBUG_STRESS_GC
         collect_garbage();
 #endif
+
+        if (vm.bytes_allocated > vm.next_gc) {
+            collect_garbage();
+        }
     }
 
     if (new_size == 0) {
@@ -163,16 +171,47 @@ static void trace_references() {
     }
 }
 
+static void sweep() {
+    Obj *previous = NULL;
+    Obj *object   = vm.objects;
+
+    while (object != NULL) {
+        if (object->is_marked) {
+            object->is_marked = false;
+
+            previous = object;
+            object   = object->next;
+        } else {
+            Obj *unreached = object;
+            object         = object->next;
+
+            if (previous != NULL) {
+                previous->next = object;
+            } else {
+                vm.objects = object;
+            }
+
+            free_object(unreached);
+        }
+    }
+}
+
 void collect_garbage() {
 #ifdef DEBUG_LOG_GC
     printf("-- gc begin\n");
+    size_t before = vm.bytes_allocated;
 #endif
 
     mark_roots();
-
     trace_references();
+    table_remove_white(&vm.strings);
+    sweep();
+
+    vm.next_gc = vm.bytes_allocated * GC_HEAP_GROW_FACTOR;
 
 #ifdef DEBUG_LOG_GC
     printf("-- gc end\n");
+    printf("   collected %zu bytes (from %zu to %zu) next at %zu\n",
+           before - vm.bytes_allocated, before, vm.bytes_allocated, vm.next_gc);
 #endif
 }

@@ -12,12 +12,12 @@
 
 VM vm;
 
-static void push(Value value) {
+void push(Value value) {
     *vm.stack_top = value;
     vm.stack_top++;
 }
 
-static Value pop() {
+Value pop() {
     vm.stack_top--;
     return *vm.stack_top;
 }
@@ -54,6 +54,9 @@ void init_vm() {
     vm.gray_count    = 0;
     vm.gray_capacity = 0;
     vm.gray_stack    = NULL;
+
+    vm.bytes_allocated = 0;
+    vm.next_gc         = 1024 * 1024;
 
     init_table(&vm.strings);
     init_table(&vm.globals);
@@ -181,8 +184,8 @@ static bool is_falsey(Value val) {
 }
 
 static void concatenate() {
-    ObjString *b = AS_STRING(pop());
-    ObjString *a = AS_STRING(pop());
+    ObjString *b = AS_STRING(peek(0));
+    ObjString *a = AS_STRING(peek(1));
 
     int len     = a->len + b->len;
     char *chars = ALLOCATE(char, len + 1);
@@ -192,6 +195,8 @@ static void concatenate() {
     chars[len] = '\0';
 
     ObjString *result = take_string(chars, len);
+    pop();
+    pop();
     push(OBJ_VAL(result));
 }
 
