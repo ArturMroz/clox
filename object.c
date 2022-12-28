@@ -10,10 +10,16 @@
 #define ALLOCATE_OBJ(type, objectType) (type *)allocate_object(sizeof(type), objectType)
 
 static Obj *allocate_object(size_t size, ObjType type) {
-    Obj *object  = (Obj *)reallocate(NULL, 0, size);
-    object->type = type;
-    object->next = vm.objects;
-    vm.objects   = object;
+    Obj *object       = (Obj *)reallocate(NULL, 0, size);
+    object->type      = type;
+    object->is_marked = false;
+    object->next      = vm.objects;
+
+    vm.objects = object;
+
+#ifdef DEBUG_LOG_GC
+    printf("%p allocate %zu for %d\n", (void *)object, size, type);
+#endif
 
     return object;
 }
