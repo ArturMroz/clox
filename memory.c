@@ -91,6 +91,10 @@ static void free_object(Obj *object) {
         FREE(ObjClosure, object);
         break;
     }
+    case OBJ_CLASS: {
+        FREE(ObjClass, object);
+        break;
+    }
     case OBJ_UPVALUE:
         FREE(ObjUpvalue, object);
         break;
@@ -139,6 +143,11 @@ static void blacken_object(Obj *object) {
 #endif
 
     switch (object->type) {
+    case OBJ_CLASS: {
+        ObjClass *klass = (ObjClass *)object;
+        mark_object((Obj *)klass->name);
+        break;
+    }
     case OBJ_CLOSURE: {
         ObjClosure *closure = (ObjClosure *)object;
         mark_object((Obj *)closure->function);

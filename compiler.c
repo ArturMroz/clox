@@ -183,6 +183,8 @@ static ObjFunction *end_compiler() {
     }
 #endif
 
+    current = current->enclosing;
+
     return fn;
 }
 
@@ -200,6 +202,7 @@ static void end_scope() {
         } else {
             emit_byte(OP_POP);
         }
+
         current->local_count--;
     }
 }
@@ -237,7 +240,8 @@ static void init_compiler(Compiler *compiler, FunctionType type) {
     compiler->local_count = 0;
     compiler->scope_depth = 0;
     compiler->function    = new_function(); // assigning to function again, GC-related paranoia
-    current               = compiler;
+
+    current = compiler;
 
     if (type != TYPE_SCRIPT) {
         current->function->name = copy_string(parser.prev.start, parser.prev.len);
@@ -754,6 +758,7 @@ static void function(FunctionType type) {
             define_variable(constant);
         } while (match(TOKEN_COMMA));
     }
+
     consume(TOKEN_RIGHT_PAREN, "Expect ')' after parameters.");
     consume(TOKEN_LEFT_BRACE, "Expect '{' before function body.");
     block();
@@ -767,6 +772,18 @@ static void function(FunctionType type) {
     }
 }
 
+static void class_declaration() {
+    consume(TOKEN_IDENTIFIER, "Expect class name.");
+    uint8_t name_constant = identifier_constant(&parser.prev);
+    declare_variable();
+
+    emit_bytes(OP_CLASS, name_constant);
+    define_variable(name_constant);
+
+    consume(TOKEN_LEFT_BRACE, "Expect '{' before class body.");
+    consume(TOKEN_RIGHT_BRACE, "Expect '}' after class body.");
+}
+
 static void fun_declaration() {
     uint8_t global = parse_variable("Expect function name.");
     mark_initialised();
@@ -775,7 +792,9 @@ static void fun_declaration() {
 }
 
 static void declaration() {
-    if (match(TOKEN_FUN)) {
+    if (match(TOKEN_CLASS)) {
+        class_declaration();
+    } else if (match(TOKEN_FUN)) {
         fun_declaration();
     } else if (match(TOKEN_VAR)) {
         var_declaration();

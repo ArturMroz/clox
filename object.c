@@ -24,6 +24,12 @@ static Obj *allocate_object(size_t size, ObjType type) {
     return object;
 }
 
+ObjClass *new_class(ObjString *name) {
+    ObjClass *klass = ALLOCATE_OBJ(ObjClass, OBJ_CLASS);
+    klass->name     = name;
+    return klass;
+}
+
 ObjFunction *new_function() {
     ObjFunction *function   = ALLOCATE_OBJ(ObjFunction, OBJ_FUNCTION);
     function->arity         = 0;
@@ -123,6 +129,9 @@ static void print_function(ObjFunction *fn) {
 
 void print_object(Value value) {
     switch (OBJ_TYPE(value)) {
+    case OBJ_CLASS:
+        printf("%s", AS_CLASS(value)->name->chars);
+        break;
     case OBJ_FUNCTION:
         print_function(AS_FUNCTION(value));
         break;
