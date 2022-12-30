@@ -126,6 +126,11 @@ static bool call(ObjClosure *closure, int arg_count) {
 static bool call_value(Value callee, int arg_count) {
     if (IS_OBJ(callee)) {
         switch (OBJ_TYPE(callee)) {
+        case OBJ_CLASS: {
+            ObjClass *klass              = AS_CLASS(callee);
+            vm.stack_top[-arg_count - 1] = OBJ_VAL(new_instance(klass));
+            return true;
+        }
         case OBJ_CLOSURE:
             return call(AS_CLOSURE(callee), arg_count);
         case OBJ_NATIVE: {

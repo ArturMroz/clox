@@ -27,7 +27,16 @@ static Obj *allocate_object(size_t size, ObjType type) {
 ObjClass *new_class(ObjString *name) {
     ObjClass *klass = ALLOCATE_OBJ(ObjClass, OBJ_CLASS);
     klass->name     = name;
+
     return klass;
+}
+
+ObjInstance *new_instance(ObjClass *klass) {
+    ObjInstance *instance = ALLOCATE_OBJ(ObjInstance, OBJ_INSTANCE);
+    instance->klass       = klass;
+    init_table(&instance->fields);
+
+    return instance;
 }
 
 ObjFunction *new_function() {
@@ -131,6 +140,9 @@ void print_object(Value value) {
     switch (OBJ_TYPE(value)) {
     case OBJ_CLASS:
         printf("%s", AS_CLASS(value)->name->chars);
+        break;
+    case OBJ_INSTANCE:
+        printf("%s instance", AS_INSTANCE(value)->klass->name->chars);
         break;
     case OBJ_FUNCTION:
         print_function(AS_FUNCTION(value));
