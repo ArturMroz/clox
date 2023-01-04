@@ -6,29 +6,32 @@
 #include "table.h"
 #include "value.h"
 
-#define OBJ_TYPE(val)      (AS_OBJ(val)->type)
+#define OBJ_TYPE(val)          (AS_OBJ(val)->type)
 
-#define IS_FUNCTION(val)   is_obj_type(val, OBJ_FUNCTION)
-#define IS_NATIVE(value)   is_obj_type(value, OBJ_NATIVE)
-#define IS_CLOSURE(value)  is_obj_type(value, OBJ_CLOSURE)
-#define IS_CLASS(value)    is_obj_type(value, OBJ_CLASS)
-#define IS_INSTANCE(value) is_obj_type(value, OBJ_INSTANCE)
-#define IS_STRING(val)     is_obj_type(val, OBJ_STRING)
+#define IS_BOUND_METHOD(value) is_obj_type(value, OBJ_BOUND_METHOD)
+#define IS_CLASS(value)        is_obj_type(value, OBJ_CLASS)
+#define IS_CLOSURE(value)      is_obj_type(value, OBJ_CLOSURE)
+#define IS_FUNCTION(val)       is_obj_type(val, OBJ_FUNCTION)
+#define IS_INSTANCE(value)     is_obj_type(value, OBJ_INSTANCE)
+#define IS_NATIVE(value)       is_obj_type(value, OBJ_NATIVE)
+#define IS_STRING(val)         is_obj_type(val, OBJ_STRING)
 
-#define AS_FUNCTION(val)   ((ObjFunction *)AS_OBJ(val))
-#define AS_NATIVE(value)   (((ObjNative *)AS_OBJ(value))->function)
-#define AS_CLOSURE(value)  ((ObjClosure *)AS_OBJ(value))
-#define AS_CLASS(value)    ((ObjClass *)AS_OBJ(value))
-#define AS_INSTANCE(value) ((ObjInstance *)AS_OBJ(value))
-#define AS_STRING(val)     ((ObjString *)AS_OBJ(val))
-#define AS_CSTRING(val)    (((ObjString *)AS_OBJ(val))->chars)
+#define AS_BOUND_METHOD(value) ((ObjBoundMethod *)AS_OBJ(value))
+#define AS_CLASS(value)        ((ObjClass *)AS_OBJ(value))
+#define AS_CLOSURE(value)      ((ObjClosure *)AS_OBJ(value))
+#define AS_CSTRING(val)        (((ObjString *)AS_OBJ(val))->chars)
+#define AS_FUNCTION(val)       ((ObjFunction *)AS_OBJ(val))
+#define AS_INSTANCE(value)     ((ObjInstance *)AS_OBJ(value))
+#define AS_NATIVE(value)       (((ObjNative *)AS_OBJ(value))->function)
+#define AS_STRING(val)         ((ObjString *)AS_OBJ(val))
 
 typedef enum {
-    OBJ_FUNCTION,
-    OBJ_NATIVE,
-    OBJ_CLOSURE,
+    OBJ_BOUND_METHOD,
     OBJ_CLASS,
+    OBJ_CLOSURE,
+    OBJ_FUNCTION,
     OBJ_INSTANCE,
+    OBJ_NATIVE,
     OBJ_STRING,
     OBJ_UPVALUE,
 } ObjType;
@@ -80,6 +83,12 @@ typedef struct {
     Table fields;
 } ObjInstance;
 
+typedef struct {
+    Obj obj;
+    Value receiver;
+    ObjClosure *method;
+} ObjBoundMethod;
+
 struct ObjString {
     Obj obj;
     int len;
@@ -89,6 +98,7 @@ struct ObjString {
     char *chars;
 };
 
+ObjBoundMethod *new_bound_method(Value receiver, ObjClosure *method);
 ObjFunction *new_function();
 ObjNative *new_native(NativeFn function);
 ObjClosure *new_closure(ObjFunction *function);

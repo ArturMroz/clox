@@ -76,25 +76,25 @@ static void free_object(Obj *object) {
 #endif
 
     switch (object->type) {
-    case OBJ_FUNCTION: {
-        ObjFunction *function = (ObjFunction *)object;
-        free_chunk(&function->chunk);
-        FREE(ObjFunction, object);
+    case OBJ_BOUND_METHOD:
+        FREE(ObjBoundMethod, object);
+        break;
+    case OBJ_CLASS: {
+        ObjClass *klass = (ObjClass *)object;
+        free_table(&klass->methods);
+        FREE(ObjClass, object);
         break;
     }
-    case OBJ_NATIVE:
-        FREE(ObjNative, object);
-        break;
     case OBJ_CLOSURE: {
         ObjClosure *closure = (ObjClosure *)object;
         FREE_ARRAY(ObjUpvalue *, closure->upvalues, closure->upvalue_count);
         FREE(ObjClosure, object);
         break;
     }
-    case OBJ_CLASS: {
-        ObjClass *klass = (ObjClass *)object;
-        free_table(&klass->methods);
-        FREE(ObjClass, object);
+    case OBJ_FUNCTION: {
+        ObjFunction *function = (ObjFunction *)object;
+        free_chunk(&function->chunk);
+        FREE(ObjFunction, object);
         break;
     }
     case OBJ_INSTANCE: {
@@ -103,8 +103,8 @@ static void free_object(Obj *object) {
         FREE(ObjInstance, object);
         break;
     }
-    case OBJ_UPVALUE:
-        FREE(ObjUpvalue, object);
+    case OBJ_NATIVE:
+        FREE(ObjNative, object);
         break;
     case OBJ_STRING: {
         ObjString *str = (ObjString *)object;
@@ -112,6 +112,9 @@ static void free_object(Obj *object) {
         FREE(ObjString, object);
         break;
     }
+    case OBJ_UPVALUE:
+        FREE(ObjUpvalue, object);
+        break;
     }
 }
 
@@ -151,16 +154,16 @@ static void blacken_object(Obj *object) {
 #endif
 
     switch (object->type) {
+    case OBJ_BOUND_METHOD: {
+        ObjBoundMethod *bound = (ObjBoundMethod *)object;
+        mark_value(bound->receiver);
+        mark_object((Obj *)bound->method);
+        break;
+    }
     case OBJ_CLASS: {
         ObjClass *klass = (ObjClass *)object;
         mark_object((Obj *)klass->name);
         mark_table(&klass->methods);
-        break;
-    }
-    case OBJ_INSTANCE: {
-        ObjInstance *instance = (ObjInstance *)object;
-        mark_object((Obj *)instance->klass);
-        mark_table(&instance->fields);
         break;
     }
     case OBJ_CLOSURE: {
@@ -169,6 +172,12 @@ static void blacken_object(Obj *object) {
         for (int i = 0; i < closure->upvalue_count; i++) {
             mark_object((Obj *)closure->upvalues[i]);
         }
+        break;
+    }
+    case OBJ_INSTANCE: {
+        ObjInstance *instance = (ObjInstance *)object;
+        mark_object((Obj *)instance->klass);
+        mark_table(&instance->fields);
         break;
     }
     case OBJ_FUNCTION: {
@@ -182,8 +191,8 @@ static void blacken_object(Obj *object) {
         break;
     case OBJ_NATIVE:
     case OBJ_STRING:
-        // TODO strings and native fs don't need processing so can skip adding these to the gray
-        // stack and just darken them from white straight to black
+        // TODO strings and native fns don't need processing so we can skip adding these to the gray
+        //      stack and just darken them from white straight to black
         break;
     }
 }
@@ -202,9 +211,8 @@ static void sweep() {
     while (object != NULL) {
         if (object->is_marked) {
             object->is_marked = false;
-
-            previous = object;
-            object   = object->next;
+            previous          = object;
+            object            = object->next;
         } else {
             Obj *unreached = object;
             object         = object->next;
