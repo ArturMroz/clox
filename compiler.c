@@ -56,6 +56,7 @@ typedef struct {
 typedef enum {
     TYPE_FUNCTION,
     TYPE_METHOD,
+    TYPE_INITIALIZER,
     TYPE_SCRIPT,
 } FunctionType;
 
@@ -174,7 +175,12 @@ static void emit_loop(int loop_start) {
 }
 
 static void emit_return() {
-    emit_byte(OP_NIL);
+    if (current->type == TYPE_INITIALIZER) {
+        emit_bytes(OP_GET_LOCAL, 0);
+    } else {
+        emit_byte(OP_NIL);
+    }
+
     emit_byte(OP_RETURN);
 }
 
@@ -607,12 +613,15 @@ static void return_statement() {
 
     if (match(TOKEN_SEMICOLON)) {
         emit_return();
-        return;
-    }
+    } else {
+        if (current->type == TYPE_INITIALIZER) {
+            error("Can't return a value from an initializer.");
+        }
 
-    expression();
-    consume(TOKEN_SEMICOLON, "Expect ';' after return value.");
-    emit_byte(OP_RETURN);
+        expression();
+        consume(TOKEN_SEMICOLON, "Expect ';' after return value.");
+        emit_byte(OP_RETURN);
+    }
 }
 
 static void while_statement() {
@@ -810,6 +819,10 @@ static void method() {
     uint8_t constant = identifier_constant(&parser.prev);
 
     FunctionType type = TYPE_METHOD;
+    if (parser.prev.len == 4 && memcmp(parser.prev.start, "init", 4) == 0) {
+        type = TYPE_INITIALIZER;
+    }
+
     function(type);
 
     emit_bytes(OP_METHOD, constant);

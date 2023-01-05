@@ -92,6 +92,7 @@ static void skip_whitespace() {
                 while (peek() != '\n' && !is_at_end()) {
                     advance();
                 }
+                break;
             } else {
                 return;
             }
@@ -252,6 +253,9 @@ Token scan_token() {
     default:
         if (is_alpha(c)) return identifier();
         if (is_digit(c)) return number();
+
+        printf("cur char: '%c' (val: %d)\n", c, c);
+        // printf("cur char val: '%d'\n", c);
 
         return error_token("Unexpected character.");
     }

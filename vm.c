@@ -61,15 +61,19 @@ void init_vm() {
     init_table(&vm.strings);
     init_table(&vm.globals);
 
+    vm.init_string = NULL; // zero it out first to please GC
+    vm.init_string = copy_string("init", 4);
+
     define_native("clock", clock_native);
 }
 
 void free_vm() {
     // the process will free everything on exit, but it feels undignified to
     // require the operating system to clean up our mess
-    free_objects();
     free_table(&vm.strings);
     free_table(&vm.globals);
+    vm.init_string = NULL;
+    free_objects();
 }
 
 static void runtime_error(const char *fmt, ...) {
@@ -134,6 +138,13 @@ static bool call_value(Value callee, int arg_count) {
         case OBJ_CLASS: {
             ObjClass *klass              = AS_CLASS(callee);
             vm.stack_top[-arg_count - 1] = OBJ_VAL(new_instance(klass));
+            Value initializer;
+            if (table_get(&klass->methods, vm.init_string, &initializer)) {
+                return call(AS_CLOSURE(initializer), arg_count);
+            } else if (arg_count != 0) {
+                runtime_error("Expected 0 arguments but got %d.", arg_count);
+                return false;
+            }
             return true;
         }
         case OBJ_CLOSURE:
