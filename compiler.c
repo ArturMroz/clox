@@ -444,16 +444,16 @@ static void named_variable(Token name, bool can_assign) {
     uint8_t get_op, set_op;
     int arg = resolve_local_idx(current, &name);
 
-    if (arg == -1) {
-        arg    = identifier_constant(&name);
-        get_op = OP_GET_GLOBAL;
-        set_op = OP_SET_GLOBAL;
+    if (arg != -1) {
+        get_op = OP_GET_LOCAL;
+        set_op = OP_SET_LOCAL;
     } else if ((arg = resolve_upvalue_idx(current, &name)) != -1) {
         get_op = OP_GET_UPVALUE;
         set_op = OP_SET_UPVALUE;
     } else {
-        get_op = OP_GET_LOCAL;
-        set_op = OP_SET_LOCAL;
+        arg    = identifier_constant(&name);
+        get_op = OP_GET_GLOBAL;
+        set_op = OP_SET_GLOBAL;
     }
 
     if (can_assign && match(TOKEN_EQUAL)) {
@@ -883,7 +883,7 @@ static void class_declaration() {
         consume(TOKEN_IDENTIFIER, "Expect superclass name.");
         variable(false);
 
-        if (identifiers_equal(&class_name, &parser.prev)) {
+        if (identifiers_are_equal(&class_name, &parser.prev)) {
             error("A class can't inherit from itself.");
         }
 

@@ -18,9 +18,9 @@ static int simple_instruction(const char *name, int offset) {
 }
 
 static int byte_instruction(const char *name, Chunk *chunk, int offset) {
-    // we only print variables' index as the name gets erased by the compiler
-    // this is a toy lang and we don't support real debugging so this is ok
-    // to support proper debugging we'd need to store variable names somewhere
+    // We only print variables' index as the name gets erased by the compiler.
+    // This is a toy lang and we don't support real debugging so this is ok.
+    // To support proper debugging we'd need to store variable names somewhere.
     uint8_t slot = chunk->code[offset + 1];
     printf("%-16s %4d\n", name, slot);
     return offset + 2;
@@ -36,7 +36,7 @@ static int constant_instruction(const char *name, Chunk *chunk, int offset) {
     return offset + 2;
 }
 
-static int invokeInstruction(const char *name, Chunk *chunk, int offset) {
+static int invoke_instruction(const char *name, Chunk *chunk, int offset) {
     uint8_t constant  = chunk->code[offset + 1];
     uint8_t arg_count = chunk->code[offset + 2];
 
