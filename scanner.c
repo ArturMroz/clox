@@ -238,6 +238,8 @@ Token scan_token() {
     case '*':
         return make_token(TOKEN_STAR);
 
+    case ':':
+        return make_token(match('=') ? TOKEN_WALRUS : TOKEN_COLON);
     case '!':
         return make_token(match('=') ? TOKEN_BANG_EQUAL : TOKEN_BANG);
     case '=':

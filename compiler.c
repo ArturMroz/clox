@@ -76,6 +76,7 @@ typedef struct ClassCompiler {
 } ClassCompiler;
 
 // globals to make things shorter: it's a toy singlethreaded compiler anyway
+
 Parser parser;
 Chunk *compiling_chunk;
 Compiler *current            = NULL;
@@ -464,8 +465,25 @@ static void named_variable(Token name, bool can_assign) {
     }
 }
 
+static void walrus_declaration() {
+    declare_variable();
+
+    // bail if we're in local scope - at runtime locals aren't loooked up by name
+    if (current->scope_depth > 0) return;
+
+    int8_t global = identifier_constant(&parser.prev);
+
+    advance();
+    expression();
+    define_variable(global);
+}
+
 static void variable(bool can_assign) {
-    named_variable(parser.prev, can_assign);
+    if (check(TOKEN_WALRUS)) {
+        walrus_declaration();
+    } else {
+        named_variable(parser.prev, can_assign);
+    }
 }
 
 static Token synthetic_token(const char *text) {
@@ -954,6 +972,7 @@ ParseRule rules[] = {
     [TOKEN_GREATER_EQUAL] = {NULL,     binary, PREC_COMPARISON},
     [TOKEN_LESS]          = {NULL,     binary, PREC_COMPARISON},
     [TOKEN_LESS_EQUAL]    = {NULL,     binary, PREC_COMPARISON},
+    [TOKEN_WALRUS]        = {NULL,     NULL,   PREC_NONE      },
     [TOKEN_IDENTIFIER]    = {variable, NULL,   PREC_NONE      },
     [TOKEN_STRING]        = {string,   NULL,   PREC_NONE      },
     [TOKEN_NUMBER]        = {number,   NULL,   PREC_NONE      },
@@ -1011,8 +1030,6 @@ ObjFunction *compile(const char *source) {
 
     Compiler compiler;
     init_compiler(&compiler, TYPE_SCRIPT);
-
-    // compiling_chunk = chunk;
 
     parser.had_error  = false;
     parser.panic_mode = false;

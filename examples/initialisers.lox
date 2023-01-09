@@ -11,5 +11,5 @@ class CoffeeMaker {
   }
 }
 
-var maker = CoffeeMaker("coffee and chicory");
+maker := CoffeeMaker("coffee and chicory");
 maker.brew();

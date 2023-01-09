@@ -12,6 +12,7 @@ typedef enum {
     TOKEN_MINUS,
     TOKEN_PLUS,
     TOKEN_SEMICOLON,
+    TOKEN_COLON,
     TOKEN_SLASH,
     TOKEN_STAR,
 
@@ -24,6 +25,7 @@ typedef enum {
     TOKEN_GREATER_EQUAL,
     TOKEN_LESS,
     TOKEN_LESS_EQUAL,
+    TOKEN_WALRUS,
 
     // Literals.
     TOKEN_IDENTIFIER,
