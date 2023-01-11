@@ -20,7 +20,12 @@ void free_table(Table *table) {
 }
 
 static Entry *find_entry(Entry *entries, int capacity, ObjString *key) {
-    uint32_t index   = key->hash % capacity;
+    // big brain time:
+    // a % b == a & (b - 1) when a is a power of 2 (and we know for sure capacity meets that criteria);
+    // modulo is ~30-50 times slower than addition/substraction on x86 so this is a big win
+    uint32_t index = key->hash & (capacity - 1);
+    // uint32_t index   = key->hash % capacity; // unoptimised version
+
     Entry *tombstone = NULL;
 
     for (;;) {
@@ -40,8 +45,7 @@ static Entry *find_entry(Entry *entries, int capacity, ObjString *key) {
         }
 
         // keep probing until we find an empty bucket
-        index++;
-        index %= capacity;
+        index = (index + 1) & (capacity - 1);
     }
 }
 
@@ -127,7 +131,7 @@ void table_add_all(Table *from, Table *to) {
 ObjString *table_find_string(Table *table, const char *chars, int length, uint32_t hash) {
     if (table->len == 0) return NULL;
 
-    uint32_t index = hash % table->cap;
+    uint32_t index = hash & (table->cap - 1);
     for (;;) {
         Entry *entry = &table->entries[index];
         if (entry->key == NULL) {
@@ -140,7 +144,7 @@ ObjString *table_find_string(Table *table, const char *chars, int length, uint32
             return entry->key;
         }
 
-        index = (index + 1) % table->cap;
+        index = (index + 1) & (table->cap - 1);
     }
 }
 
