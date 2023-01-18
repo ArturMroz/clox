@@ -1,0 +1,28 @@
+// if else
+if (10 > 8) {
+  print "math still works";
+} else {
+  print "we're doomed";
+}
+
+// print 21 first Fibonacci numbers using 'for' loop
+var a = 0;
+var temp;
+
+for (var b = 1; a < 10000; b = temp + b) {
+  print a;
+  temp = a;
+  a = b;
+}
+
+// print 21 first Fibonacci numbers using 'while' loop
+var a = 0;
+var temp;
+var b = 1;
+
+while (a < 10000) {
+  print a;
+  temp = a;
+  a = b;
+  b = temp + b;
+}
